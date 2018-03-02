@@ -1,38 +1,43 @@
-use ndarray::{Array1, NdFloat};
+use ndarray::{Array, Dimension, NdFloat};
 
 /// An activation function in a Neural Network defines whether a neuron will
 /// send a signal to its outputs or not.
-pub trait Activation<F: NdFloat> {
+pub trait Activation<F, D>
+where
+    F: NdFloat,
+    D: Dimension,
+{
     #[inline]
-    fn compute(&self, x: &Array1<F>) -> Array1<F>;
+    fn compute(&self, x: &Array<F, D>) -> Array<F, D>;
 
     #[inline]
-    fn compute_derivative(&self, x: &Array1<F>) -> Array1<F>;
+    fn compute_derivative(&self, x: &Array<F, D>) -> Array<F, D>;
 }
 
 /// The Identity function.
 pub struct Identity;
-impl<F: NdFloat> Activation<F> for Identity {
+impl<F: NdFloat, D: Dimension> Activation<F, D> for Identity {
     #[inline]
-    fn compute(&self, x: &Array1<F>) -> Array1<F> {
+    fn compute(&self, x: &Array<F, D>) -> Array<F, D> {
         x.clone()
     }
     #[inline]
-    fn compute_derivative(&self, x: &Array1<F>) -> Array1<F> {
-        Array1::from_vec(vec![F::one(); x.dim()])
+    fn compute_derivative(&self, x: &Array<F, D>) -> Array<F, D> {
+        let one = F::one();
+        x.map(|_| one)
     }
 }
 
 /// The Sigmoid function squashes a real value into the ]0, 1[ range.
 pub struct Sigmoid;
-impl<F: NdFloat> Activation<F> for Sigmoid {
+impl<F: NdFloat, D: Dimension> Activation<F, D> for Sigmoid {
     #[inline]
-    fn compute(&self, x: &Array1<F>) -> Array1<F> {
+    fn compute(&self, x: &Array<F, D>) -> Array<F, D> {
         let one = F::one();
         x.map(|v: &F| one / (one + (-*v).exp()))
     }
     #[inline]
-    fn compute_derivative(&self, x: &Array1<F>) -> Array1<F> {
+    fn compute_derivative(&self, x: &Array<F, D>) -> Array<F, D> {
         let one = F::one();
         x.map(|v: &F| {
             let y = one / (one + (-*v).exp());
@@ -43,13 +48,13 @@ impl<F: NdFloat> Activation<F> for Sigmoid {
 
 /// The Hyperbolic tangent squashes a real value into the ]-1, 1[ range.
 pub struct TanH;
-impl<F: NdFloat> Activation<F> for TanH {
+impl<F: NdFloat, D: Dimension> Activation<F, D> for TanH {
     #[inline]
-    fn compute(&self, x: &Array1<F>) -> Array1<F> {
+    fn compute(&self, x: &Array<F, D>) -> Array<F, D> {
         x.map(|v| v.tanh())
     }
     #[inline]
-    fn compute_derivative(&self, x: &Array1<F>) -> Array1<F> {
+    fn compute_derivative(&self, x: &Array<F, D>) -> Array<F, D> {
         let one = F::one();
         x.map(|v| one - v.tanh().powi(2))
     }
@@ -57,14 +62,14 @@ impl<F: NdFloat> Activation<F> for TanH {
 
 /// The Rectified Linear Unit (ReLU) functions replaces negative values with 0.
 pub struct Rectifier;
-impl<F: NdFloat> Activation<F> for Rectifier {
+impl<F: NdFloat, D: Dimension> Activation<F, D> for Rectifier {
     #[inline]
-    fn compute(&self, x: &Array1<F>) -> Array1<F> {
+    fn compute(&self, x: &Array<F, D>) -> Array<F, D> {
         let zero = F::zero();
         x.map(|v| if *v < zero { zero } else { *v })
     }
     #[inline]
-    fn compute_derivative(&self, x: &Array1<F>) -> Array1<F> {
+    fn compute_derivative(&self, x: &Array<F, D>) -> Array<F, D> {
         let (zero, one) = (F::zero(), F::one());
         x.map(|v| if *v < zero { zero } else { one })
     }
@@ -72,6 +77,7 @@ impl<F: NdFloat> Activation<F> for Rectifier {
 
 #[cfg(test)]
 mod tests {
+    use ndarray::{Array1, Ix1};
     use super::super::Float;
     use super::*;
 
@@ -81,7 +87,7 @@ mod tests {
         values: Array1<Float>,
         derivatives: Array1<Float>,
     ) where
-        A: Activation<Float>,
+        A: Activation<Float, Ix1>,
     {
         assert_eq!(inputs.len(), values.len());
         assert_eq!(inputs.len(), derivatives.len());
