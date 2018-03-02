@@ -7,6 +7,15 @@ pub trait Activation<F: NdFloat> {
     fn compute(&self, x: F) -> F;
 }
 
+/// The Identity function.
+pub struct Identity;
+impl<F: NdFloat> Activation<F> for Identity {
+    #[inline]
+    fn compute(&self, x: F) -> F {
+        x
+    }
+}
+
 /// The Sigmoid function squashes a real value into the ]0, 1[ range.
 pub struct Sigmoid;
 impl<F: NdFloat> Activation<F> for Sigmoid {
@@ -52,6 +61,12 @@ mod tests {
             let result = function.compute(inputs[i]);
             assert_relative_eq!(result, outputs[i]);
         }
+    }
+
+    #[test]
+    fn identity() {
+        let inputs = vec![-23.0, -7.0, 0.0, 3.0, 10.0];
+        test_numerical_function(Identity, inputs.clone(), inputs);
     }
 
     #[test]
