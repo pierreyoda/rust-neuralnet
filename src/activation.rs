@@ -28,13 +28,15 @@ pub struct Sigmoid;
 impl<F: NdFloat> Activation<F> for Sigmoid {
     #[inline]
     fn compute(&self, x: &Array1<F>) -> Array1<F> {
-        x.map(|v: &F| F::one() / (F::one() + (-*v).exp()))
+        let one = F::one();
+        x.map(|v: &F| one / (one + (-*v).exp()))
     }
     #[inline]
     fn compute_derivative(&self, x: &Array1<F>) -> Array1<F> {
+        let one = F::one();
         x.map(|v: &F| {
-            let y = F::one() / (F::one() + (-*v).exp());
-            y * (F::one() - y)
+            let y = one / (one + (-*v).exp());
+            y * (one - y)
         })
     }
 }
@@ -48,7 +50,8 @@ impl<F: NdFloat> Activation<F> for TanH {
     }
     #[inline]
     fn compute_derivative(&self, x: &Array1<F>) -> Array1<F> {
-        x.map(|v| F::one() - v.tanh().powi(2))
+        let one = F::one();
+        x.map(|v| one - v.tanh().powi(2))
     }
 }
 
