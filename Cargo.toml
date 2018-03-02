@@ -1,0 +1,6 @@
+[package]
+name = "rust-neuralnet"
+version = "0.0.1"
+authors = ["pierreyoda <pierreyoda@users.noreply.github.com>"]
+
+[dependencies]
