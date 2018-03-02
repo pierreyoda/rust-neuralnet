@@ -1,8 +1,5 @@
-use ndarray::NdFloat;
-
+use super::Float;
 use layer::Layer;
-
-type Float = f64;
 
 /// An Artificial Neural Network mimics the behavior of real nervous systems
 /// by simulating Neurons (grouped by ```Layer```).
