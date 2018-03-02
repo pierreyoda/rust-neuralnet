@@ -1,6 +1,6 @@
 use rand::Rng;
 use rand::distributions::Range;
-use ndarray::{NdFloat, Array1, Array2};
+use ndarray::{Array1, Array2, NdFloat};
 
 use super::Float;
 use activation::Activation;
@@ -18,7 +18,9 @@ pub struct Layer<F: NdFloat> {
 
 impl<F: NdFloat> Layer<F> {
     pub fn new<A: 'static>(activation: A, weights: Array2<F>) -> Self
-        where A: Activation<F> {
+    where
+        A: Activation<F>,
+    {
         let (dim, _) = weights.dim();
         Layer {
             activation: Box::new(activation),
@@ -29,10 +31,18 @@ impl<F: NdFloat> Layer<F> {
 }
 
 impl Layer<Float> {
-    pub fn with_random_weights<A: 'static, R>(activation: A,
-        dim_inputs: usize, dim_outputs: usize, rng: &mut R) -> Self
-        where A: Activation<Float>, R: Rng {
-        let weights = Array2::<Float>::random((dim_inputs, dim_outputs), Range::new(-1.0, 1.0), rng);
+    pub fn with_random_weights<A: 'static, R>(
+        activation: A,
+        dim_inputs: usize,
+        dim_outputs: usize,
+        rng: &mut R,
+    ) -> Self
+    where
+        A: Activation<Float>,
+        R: Rng,
+    {
+        let weights =
+            Array2::<Float>::random((dim_inputs, dim_outputs), Range::new(-1.0, 1.0), rng);
         Layer::new(activation, weights)
     }
 }

@@ -1,5 +1,5 @@
-extern crate rand;
 extern crate ndarray;
+extern crate rand;
 
 pub type Float = f64;
 

@@ -30,6 +30,10 @@ pub struct Rectifier;
 impl<F: NdFloat> Activation<F> for Rectifier {
     #[inline]
     fn compute(&self, x: F) -> F {
-        if x < F::zero() { F::zero() } else { x }
+        if x < F::zero() {
+            F::zero()
+        } else {
+            x
+        }
     }
 }
