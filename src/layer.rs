@@ -2,7 +2,7 @@ use rand::Rng;
 use rand::distributions::Range;
 use ndarray::{Array2, ArrayView2, Ix2, NdFloat};
 
-use super::Float;
+use super::{Float, ResultString};
 use activation::Activation;
 use utils::NdArrayRandomizer;
 
@@ -84,7 +84,7 @@ impl<F: NdFloat> Layer<F> {
     ///              : (4 samples * 1 output) matrix
     /// output       = activation_function(output_sum)
     ///              : (4 samples * 1 output) matrix
-    pub fn forward(&mut self, inputs: ArrayView2<F>) -> Result<ArrayView2<F>, String> {
+    pub fn forward(&mut self, inputs: ArrayView2<F>) -> ResultString<ArrayView2<F>> {
         if inputs.cols() != self.inputs_weights.rows() {
             return Err(format!(
                 "Layer.forward : inputs size mismatch (inputs cols = {} != {} = weights rows)",
