@@ -81,19 +81,21 @@ mod tests {
     use super::super::Float;
     use super::*;
 
-    fn test_numerical_function<A>(
+    fn test_numerical_function<A, V>(
         function: A,
-        inputs: Array1<Float>,
-        values: Array1<Float>,
-        derivatives: Array1<Float>,
+        inputs: V,
+        values: Vec<Float>,
+        derivatives: Vec<Float>,
     ) where
         A: Activation<Float, Ix1>,
+        V: Into<Array1<Float>>,
     {
-        assert_eq!(inputs.len(), values.len());
-        assert_eq!(inputs.len(), derivatives.len());
-        let computed_values = function.compute(&inputs);
-        let computed_derivatives = function.compute_derivative(&inputs);
-        for i in 0..inputs.len() {
+        let inputs_array: Array1<Float> = inputs.into();
+        assert_eq!(inputs_array.len(), values.len());
+        assert_eq!(inputs_array.len(), derivatives.len());
+        let computed_values = function.compute(&inputs_array);
+        let computed_derivatives = function.compute_derivative(&inputs_array);
+        for i in 0..inputs_array.len() {
             assert_relative_eq!(computed_values[i], values[i]); // 16 digits precision by default
             assert_relative_eq!(computed_derivatives[i], derivatives[i]);
         }
@@ -101,28 +103,23 @@ mod tests {
 
     #[test]
     fn identity() {
-        let inputs = array![-23.0, -7.0, 0.0, 3.0, 10.0];
-        test_numerical_function(
-            Identity,
-            inputs.clone(),
-            inputs,
-            Array1::from_vec(vec![1.0; 5]),
-        );
+        let inputs = vec![-23.0, -7.0, 0.0, 3.0, 10.0];
+        test_numerical_function(Identity, inputs.clone(), inputs, vec![1.0; 5]);
     }
 
     #[test]
     fn sigmoid() {
         test_numerical_function(
             Sigmoid,
-            array![-2.0, -1.0, 0.0, 1.0, 2.0],
-            array![
+            vec![-2.0, -1.0, 0.0, 1.0, 2.0],
+            vec![
                 0.1192029220221175,
                 0.2689414213699951,
                 0.5,
                 0.7310585786300048,
                 0.8807970779778824,
             ],
-            array![
+            vec![
                 0.1049935854035065,
                 0.1966119332414819,
                 0.25,
@@ -136,15 +133,15 @@ mod tests {
     fn tanh() {
         test_numerical_function(
             TanH,
-            array![-1.0, -0.5, 0.0, 0.5, 1.0],
-            array![
+            vec![-1.0, -0.5, 0.0, 0.5, 1.0],
+            vec![
                 -0.7615941559557649,
                 -0.4621171572600097,
                 0.0,
                 0.4621171572600097,
                 0.7615941559557649,
             ],
-            array![
+            vec![
                 0.4199743416140261,
                 0.7864477329659274,
                 1.0,
@@ -158,9 +155,9 @@ mod tests {
     fn relu() {
         test_numerical_function(
             Rectifier,
-            array![-150.0, -7.0, 0.0, 3.0, 10.0],
-            array![0.0, 0.0, 0.0, 3.0, 10.0],
-            array![0.0, 0.0, 1.0, 1.0, 1.0],
+            vec![-150.0, -7.0, 0.0, 3.0, 10.0],
+            vec![0.0, 0.0, 0.0, 3.0, 10.0],
+            vec![0.0, 0.0, 1.0, 1.0, 1.0],
         );
     }
 }
