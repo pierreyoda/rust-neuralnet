@@ -49,7 +49,6 @@ impl NeuralNetworkBuilder {
         A: Activation<Float, Ix2>,
         R: Rng,
     {
-        assert!(self.layers.len() > 0, "NeuralNetworkBuilder : no output ");
         debug_assert!(self.last_layer_outputs > 0);
         let last_layer =
             Layer::with_random_weights(activation, self.last_layer_outputs, neurons, outputs, rng);

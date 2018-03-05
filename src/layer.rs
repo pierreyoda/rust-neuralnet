@@ -1,6 +1,6 @@
 use rand::Rng;
 use rand::distributions::Range;
-use ndarray::{Array2, ArrayView2, Ix2, NdFloat};
+use ndarray::{Array1, Array2, ArrayView1, ArrayView2, Ix2, NdFloat, Zip};
 
 use super::{Float, ResultString};
 use activation::Activation;
@@ -42,6 +42,15 @@ pub struct Layer<F: NdFloat> {
     inputs_weights: Array2<F>,
     outputs: Array2<F>,
     outputs_weights: Array2<F>,
+    // cached results
+    layer_inputs_sum: Array2<F>,
+    layer_inputs_sum_activated: Array2<F>,
+    layer_outputs_sum: Array2<F>,
+    backprop_error_1: Array2<F>,
+    backprop_error_2: Array2<F>,
+    costs: Array1<F>,
+    cost_d_inputs: Array2<F>,
+    cost_d_outputs: Array2<F>,
 }
 
 impl<F: NdFloat> Layer<F> {
@@ -60,31 +69,51 @@ impl<F: NdFloat> Layer<F> {
             inputs_weights,
             outputs: Array2::zeros(dim),
             outputs_weights: outputs_weights,
+            layer_inputs_sum: Array2::zeros((0, 0)),
+            layer_inputs_sum_activated: Array2::zeros((0, 0)),
+            layer_outputs_sum: Array2::zeros((0, 0)),
+            backprop_error_1: Array2::zeros((0, 0)),
+            backprop_error_2: Array2::zeros((0, 0)),
+            costs: Array1::zeros(0),
+            cost_d_inputs: Array2::zeros((0, 0)),
+            cost_d_outputs: Array2::zeros((0, 0)),
         }
     }
 
-    /// Compute the outputs of the layer using forward propagation.
+    /// Compute and store the outputs of the layer using forward propagation.
     /// The output vector will be stored within the layer and a read-only
     /// ```ArrayView``` of it will be returned.
     ///
     /// The output matrix is given by the values of the activation function
-    /// evaluated for each neuron at the weighted sum of the layer:
-    /// weighted_sum = [input matrix] * [input weights matrix]
-    ///              : example with 3 neurons and 4 samples for both of two outputs
-    ///              = [i11 i21          [
-    ///                 i21 i22     *     w11, w12, w13,
-    ///                 i31 i32
-    ///                 i41 i42           w21, w22, w23
-    ///                ]                 ]
-    ///              : (4 samples * 2 inputs) * (2 inputs * 3 neurons)
-    ///              : (4 samples * 3 neurons) matrix
-    /// result       = activation_function(layer_sum)
-    /// output_sum   = [result matrix] * [output weights matrix]
-    ///              : (4 samples * 3 neurons) * (3 neurons * 1 output)
-    ///              : (4 samples * 1 output) matrix
-    /// output       = activation_function(output_sum)
-    ///              : (4 samples * 1 output) matrix
-    pub fn forward(&mut self, inputs: ArrayView2<F>) -> ResultString<ArrayView2<F>> {
+    /// evaluated for each neuron at the weighted sum of the layer.
+    ///
+    /// ## Input
+    ///
+    /// `inputs`: ([samples] * [inputs])
+    ///
+    /// ## Intermediate results
+    ///
+    /// - layer_inputs_sum
+    ///   : ([samples] * [inputs]) * ([inputs] * [neurons])
+    ///   : ([samples] * [neurons])
+    ///   = inputs * inputs_weights
+    ///
+    /// - layer_inputs_sum_activated = activation(layer_sum)
+    ///
+    /// - layer_outputs_sum
+    ///   : ([samples * [neurons]) * ([neurons] * [outputs])
+    ///   : ([samples] * [outputs])
+    ///   = layers_inputs_sum_activated * outputs_weights
+    ///
+    ///
+    /// ## Output
+    ///
+    /// Returns a view to the outputs as estimated by the Layer for the given `inputs`.
+    /// outputs
+    /// : ([samples] * [output])
+    /// = activation(outputs_sum)
+    ///
+    pub fn forward_propagation(&mut self, inputs: &ArrayView2<F>) -> ResultString<ArrayView2<F>> {
         if inputs.cols() != self.inputs_weights.rows() {
             return Err(format!(
                 "Layer.forward : inputs size mismatch (inputs cols = {} != {} = weights rows)",
@@ -92,11 +121,65 @@ impl<F: NdFloat> Layer<F> {
                 self.inputs_weights.rows(),
             ));
         }
-        let layer_sum = inputs.dot(&self.inputs_weights);
-        let layer_result = self.activation.compute(&layer_sum);
-        let output_sum = layer_result.dot(&self.outputs_weights);
-        self.outputs = self.activation.compute(&output_sum);
+        println!("rezrezrez\n{}\n{}\n\n\n", inputs, self.inputs_weights);
+        self.layer_inputs_sum = inputs.dot(&self.inputs_weights);
+        self.layer_inputs_sum_activated = self.activation.compute(&self.layer_inputs_sum);
+        self.layer_outputs_sum = self.layer_inputs_sum_activated.dot(&self.outputs_weights);
+        self.outputs = self.activation.compute(&self.layer_outputs_sum);
         Ok(self.outputs.view())
+    }
+
+    /// Compute and store the gradient of the Mean Squared Error cost function
+    /// for the current ```Layer```.
+    ///
+    /// ## Input
+    ///
+    /// - `inputs`: ([samples] * [inputs])
+    ///
+    /// - `expected_outputs`: ([samples] * [outputs])
+    ///
+    /// ## Intermediate results
+    ///
+    /// .: = element-wise multiplication
+    ///
+    /// - `backprop_error_1`
+    ///   : ([samples] * [outputs])
+    ///   = - (self.outputs - expected_outputs) .* activation_derivative(self.layer_outputs_sum)
+    ///
+    /// - `cost_d_outputs`: partial derivative of the cost with respect to the outputs weights
+    ///   : ([neurons] * [samples]) * ([samples] * [outputs]) = ([neurons] * [outputs])
+    ///   = self.layer_inputs_sum_activated.transposed() * backprop_error_1
+    ///
+    /// - `backprop_error_2`
+    ///   : ([samples] * [outputs]) * ([outputs] * [neurons]) = ([samples] * [neurons])
+    ///   = (backprop_error_1 * outputs_weights.transposed()) .* activation_derivative(self.layer_inputs_sum)
+    ///
+    /// - `cost_d_inputs`: partial derivative of the cost with respect to the inputs weights
+    ///   : ([inputs] * [samples]) * ([samples] * [neurons]) = ([inputs] * [neurons])
+    ///   = inputs.transposed() * backprop_error_2
+    ///
+    /// ## Output
+    ///
+    /// Returns a view to the gradient of the cost function.
+    ///
+    pub fn cost_gradient_mse(
+        &mut self,
+        inputs: &ArrayView2<F>,
+        expected_outputs: &ArrayView2<F>,
+    ) -> (ArrayView2<F>, ArrayView2<F>) {
+        let outputs_derivative = self.activation.compute_derivative(&self.layer_outputs_sum);
+        let outputs_delta = expected_outputs - &self.outputs;
+        self.backprop_error_1 = outputs_delta * outputs_derivative;
+        self.cost_d_outputs = self.layer_inputs_sum_activated
+            .t()
+            .dot(&self.backprop_error_1);
+
+        let inputs_derivative = self.activation.compute_derivative(&self.layer_inputs_sum);
+        self.backprop_error_2 =
+            self.backprop_error_1.dot(&self.outputs_weights.t()) * inputs_derivative;
+        self.cost_d_inputs = inputs.t().dot(&self.backprop_error_2);
+
+        (self.cost_d_inputs.view(), self.cost_d_outputs.view())
     }
 }
 
@@ -117,5 +200,36 @@ impl Layer<Float> {
         let outputs_weights =
             Array2::<Float>::random((dim_neurons, dim_outputs), Range::new(0.0, 1.0), rng);
         Layer::new(activation, inputs_weights, outputs_weights)
+    }
+
+    /// Compute and store the "score" of our current outputs evaluation compared
+    /// to the expected outputs using the Mean Squared Error cost function.
+    ///
+    /// ## Input
+    ///
+    /// `expected_outputs`: ([samples] * [outputs])
+    ///
+    /// ## Output
+    /// Returns a view to the evaluated cost vector.
+    ///
+    /// costs
+    /// : (1 * [ouputs])
+    /// = 1/2 * sum((expected_output - output) ^ 2)
+    pub fn cost_mse(
+        &mut self,
+        inputs: &ArrayView2<Float>,
+        expected_outputs: &ArrayView2<Float>,
+    ) -> ArrayView1<Float> {
+        let mut squared_diffs = Array2::zeros(expected_outputs.dim());
+        Zip::from(&mut squared_diffs)
+            .and(&self.outputs)
+            .and(expected_outputs)
+            .apply(|d, expected, approx| *d = (expected - approx).powi(2));
+
+        self.costs = Array1::zeros(expected_outputs.cols());
+        Zip::from(&mut self.costs)
+            .and(squared_diffs.gencolumns())
+            .apply(|c, d_row| *c = 0.5 * d_row.scalar_sum());
+        self.costs.view()
     }
 }
