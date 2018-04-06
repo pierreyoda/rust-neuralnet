@@ -3,6 +3,7 @@
 A simple Neural Network implementation in Rust, made to learn the basics of machine learning from scratch.
 
 Learning resources:
+
 - [Quick intro] by ujjwalkarn (concepts)
 - Mind: [How to build a Neural Network] by Steven Miller (Javascript)
 - [Artificial Neural Networks Series] by Rubik's Code (C#)
