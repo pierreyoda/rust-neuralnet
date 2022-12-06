@@ -7,10 +7,8 @@ where
     F: NdFloat,
     D: Dimension,
 {
-    #[inline]
     fn compute(&self, x: &Array<F, D>) -> Array<F, D>;
 
-    #[inline]
     fn compute_derivative(&self, x: &Array<F, D>) -> Array<F, D>;
 }
 
@@ -77,9 +75,9 @@ impl<F: NdFloat, D: Dimension> Activation<F, D> for Rectifier {
 
 #[cfg(test)]
 mod tests {
-    use ndarray::{Array1, Ix1};
     use super::super::Float;
     use super::*;
+    use ndarray::{Array1, Ix1};
 
     fn test_numerical_function<A, V>(
         function: A,

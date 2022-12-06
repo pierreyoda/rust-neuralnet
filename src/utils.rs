@@ -1,6 +1,6 @@
-use rand::Rng;
+use ndarray::{ArrayBase, DataOwned, Dimension, NdFloat, ShapeBuilder};
 use rand::distributions::IndependentSample;
-use ndarray::{Array2, ArrayBase, DataOwned, Dimension, NdFloat, ShapeBuilder};
+use rand::Rng;
 
 /// Extends ndarray's ```ArrayBase``` to provide random arrays of any shape
 /// and any data type.

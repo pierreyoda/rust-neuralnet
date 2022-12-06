@@ -1,13 +1,13 @@
 //! Facilities meant to make the definition of common Artificial Neural Network
 //! topologies easier.
 
-use rand::Rng;
 use ndarray::Ix2;
+use rand::Rng;
 
 use super::Float;
+use activation::Activation;
 use layer::Layer;
 use network::NeuralNetwork;
-use activation::Activation;
 
 pub struct NeuralNetworkBuilder {
     /// Number of outputs of the current last layer.

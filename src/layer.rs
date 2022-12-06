@@ -1,6 +1,6 @@
-use rand::Rng;
-use rand::distributions::Range;
 use ndarray::{Array1, Array2, ArrayView1, ArrayView2, Ix2, NdFloat, Zip};
+use rand::distributions::Range;
+use rand::Rng;
 
 use super::{Float, ResultString};
 use activation::Activation;
@@ -170,7 +170,8 @@ impl<F: NdFloat> Layer<F> {
         let outputs_derivative = self.activation.compute_derivative(&self.layer_outputs_sum);
         let outputs_delta = expected_outputs - &self.outputs;
         self.backprop_error_1 = outputs_delta * outputs_derivative;
-        self.cost_d_outputs = self.layer_inputs_sum_activated
+        self.cost_d_outputs = self
+            .layer_inputs_sum_activated
             .t()
             .dot(&self.backprop_error_1);
 

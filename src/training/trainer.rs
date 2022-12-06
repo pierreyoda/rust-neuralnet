@@ -1,8 +1,8 @@
 use ndarray::Array2;
 
 use super::super::{Float, ResultString};
-use network::NeuralNetwork;
 use super::{prepare_dataset, Sample};
+use network::NeuralNetwork;
 
 pub enum TrainerHaltCondition {
     Epochs(u32),
@@ -31,11 +31,13 @@ impl Trainer {
     pub fn halt_condition(mut self, halt_condition: TrainerHaltCondition) -> Option<Self> {
         use self::TrainerHaltCondition::*;
         match halt_condition {
-            Epochs(epochs) => if epochs == 0 {
-                None
-            } else {
-                Some(self)
-            },
+            Epochs(epochs) => {
+                if epochs == 0 {
+                    None
+                } else {
+                    Some(self)
+                }
+            }
         }
     }
 }
